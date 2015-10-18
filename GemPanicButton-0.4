@@ -93,6 +93,6 @@ void loop()
   delay(5000);
   pinMode(panicPin, INPUT); // Set panic pin (14) as an input
   client.publish(topic, "REM all the way");
-  ESP.deepSleep(360000000, WAKE_RF_DEFAULT); // Sleep for 60 minutes
+  ESP.deepSleep(3600000000, WAKE_RF_DEFAULT); // Sleep for 60 minutes
   
 }

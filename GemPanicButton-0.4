@@ -1,0 +1,98 @@
+#include <PubSubClient.h>
+#include <ESP8266WiFi.h>
+
+const int panicPin = 14; // Panic Button
+bool panicStatus = false;
+
+const char* ssid = "...."; //Enter base station ssid
+const char* password = "...."; //Enter base station password
+
+char* topic = "/sensors/panicbutton";
+char* server = "...."; //Enter MQTT broker ip addres (Basestation ip)
+char* message = "";
+WiFiClient wifiClient;
+
+void callback(char* topic, byte* message, unsigned int length)
+{
+  Serial.println("Received some data");
+  Serial.println((char*) message);
+  Serial.println();   
+}
+
+PubSubClient client(server, 1883, callback, wifiClient);
+
+void setup() 
+{
+  pinMode(panicPin, INPUT); // Set panic pin (14) as an input
+  
+  String clientName;
+  clientName += "esp8266";
+  
+  Serial.begin(115200);
+  delay(10);
+  Serial.println();
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED)
+   {
+    delay(500);
+    Serial.print(".");
+   }
+  Serial.println("");
+  Serial.println("WiFi connected");  
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  
+  Serial.print("Connecting to ");
+  Serial.print(server);
+  Serial.print(" as ");
+  Serial.println(clientName);
+  
+  if (client.connect((char*) clientName.c_str()))
+  {
+    Serial.println("Connected to MQTT broker");
+    Serial.print("Topic is: ");
+    Serial.println(topic);
+    //client.publish(topic, "Conected to base station ");
+    if (client.publish(topic, "Gem is awake,PING"))
+    {
+      Serial.println("Publish ok");
+    }
+    else
+    {
+      Serial.println("Publish failed");
+    }
+  }
+  else 
+  {
+    Serial.println("MQTT connect failed");
+    Serial.println("Will reset and try again...");
+    abort();
+  }
+  /* for getting messages from base station, not used yet.
+  client.subscribe("/sensors/panicping");
+  if (client.subscribe("/sensors/panicping")){
+  */Serial.println("Successfully subscribed");
+}
+void loop() 
+{
+  panicStatus = (digitalRead(panicPin));
+  Serial.print(panicStatus);
+  if ((panicStatus) == true)
+  {
+    (client.publish(topic, "Panic button pressed"));// Send panic
+    
+  }
+  
+  pinMode(panicPin, OUTPUT); // Set panic pin (14) as an output
+  digitalWrite(panicPin, LOW);// Discharges panic button capacitor to logic level 0
+  delay(5000);
+  pinMode(panicPin, INPUT); // Set panic pin (14) as an input
+  client.publish(topic, "REM all the way");
+  ESP.deepSleep(360000000, WAKE_RF_DEFAULT); // Sleep for 60 minutes
+  
+}
